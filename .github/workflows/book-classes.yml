@@ -24,9 +24,3 @@ jobs:
           COREPOWER_EMAIL: ${{ secrets.COREPOWER_EMAIL }}
           COREPOWER_PASSWORD: ${{ secrets.COREPOWER_PASSWORD }}
           TZ: America/New_York
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: screenshots
-          path: screenshots/
