@@ -1,8 +1,8 @@
-name: Book CorePower Classes
+name: "Book Tuesday Class"
 
 on:
   schedule:
-    - cron: '0 10 * * 3'  # Every Wednesday at 10:00 UTC (5:00 AM EST / 6:00 AM EDT)
+    - cron: '0 10 * * 3'  # Wednesday 5:00 AM EST / 6:00 AM EDT
   workflow_dispatch: {}
 
 jobs:

@@ -1,0 +1,30 @@
+name: "Book Wednesday Class"
+
+on:
+  schedule:
+    - cron: '0 10 * * 4'  # Thursday 5:00 AM EST / 6:00 AM EDT
+  workflow_dispatch: {}
+
+jobs:
+  book:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - run: pip install -r requirements.txt
+
+      - run: playwright install chromium --with-deps
+
+      - run: cp config.example.py config.py
+
+      - run: python book_classes.py next wednesday
+        env:
+          COREPOWER_EMAIL: ${{ secrets.COREPOWER_EMAIL }}
+          COREPOWER_PASSWORD: ${{ secrets.COREPOWER_PASSWORD }}
+          STUDIO_LOCATION: ${{ secrets.STUDIO_LOCATION }}
+          CLASSES_TO_BOOK: ${{ secrets.CLASSES_TO_BOOK }}
+          TZ: America/New_York
