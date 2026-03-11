@@ -1,4 +1,5 @@
 .env
+config.py
 session.json
 screenshots/
 __pycache__/

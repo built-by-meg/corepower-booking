@@ -1,14 +1,6 @@
 # CorePower Booking Automation
 
-Automates booking CorePower Yoga classes at East Village using Playwright browser automation.
-
-**Goal:** Automate my personal life (#2)
-
-## Weekly schedule
-
-- **Tuesday 7:30 AM** — C2 @ East Village
-- **Wednesday 8:15 AM** — Yoga Sculpt @ East Village
-- **Friday 9:00 AM** — C2 @ East Village
+Automates booking CorePower Yoga classes using Playwright browser automation. Configure your studio, classes, and schedule — the script handles the rest.
 
 ## Setup
 
@@ -17,7 +9,8 @@ pip install -r requirements.txt
 playwright install chromium
 ```
 
-Copy `.env.example` to `.env` and fill in your CorePower credentials.
+1. Copy `.env.example` to `.env` and fill in your CorePower credentials
+2. Copy `config.example.py` to `config.py` and set your studio, classes, and times
 
 ## Usage
 
@@ -35,7 +28,7 @@ python book_classes.py book next week           # next week
 
 ## Configuration
 
-Edit `config.py` to change:
+Edit your local `config.py` (copied from `config.example.py`) to change:
 - `STUDIO_LOCATION` — studio name to filter by
 - `CLASSES_TO_BOOK` — list of day/time/class combos
 - `JOIN_WAITLIST` — whether to auto-join waitlists (default: True)
@@ -65,7 +58,7 @@ Edit `config.py` to change:
 - BOOK buttons are `div.btn-session-book` (styled divs, not `<button>`)
 - Two buttons per row (mobile + desktop) — script clicks the first visible one
 - Times are lowercase: "7:30 am"
-- Class names have prefixes: "C2 - CorePower Yoga 2 - NYC"
+- Class names have prefixes: e.g. "C2 - CorePower Yoga 2 - Location"
 - Studio filter chip: `.cpy-chip-container`, close button: `img[alt='Close icon']`
 - Login modal: `.cpy-modal.show` (not `[role='dialog']`)
 - Classes lazy-load on scroll
