@@ -1,3 +1,5 @@
+import sys
+
 from playwright.sync_api import sync_playwright
 from config import COREPOWER_EMAIL, COREPOWER_PASSWORD, STUDIO_LOCATION, CLASSES_TO_BOOK, JOIN_WAITLIST
 from datetime import datetime, timedelta
@@ -164,18 +166,64 @@ def navigate_to_schedule(page):
     log("  Done — schedule loaded!")
 
 
+def discover_visible_dates(page):
+    """Log all date section headers currently visible on the page."""
+    headers = page.locator("p.schedule-list__date")
+    count = headers.count()
+    if count == 0:
+        # Try broader selectors in case DOM changed
+        for alt_sel in [
+            "[class*='schedule'] [class*='date']",
+            "[class*='schedule-list'] h2, [class*='schedule-list'] h3",
+            "[class*='date-header']",
+        ]:
+            alt = page.locator(alt_sel)
+            if alt.count() > 0:
+                log(f"  NOTE: Found {alt.count()} elements via '{alt_sel}' (original selector found 0)")
+                for i in range(min(alt.count(), 5)):
+                    try:
+                        log(f"    [{i}] tag={alt.nth(i).evaluate('el => el.tagName')} "
+                            f"class={alt.nth(i).evaluate('el => el.className')} "
+                            f"text='{alt.nth(i).text_content().strip()[:80]}'")
+                    except Exception:
+                        pass
+                break
+        log(f"  WARNING: No date headers found with 'p.schedule-list__date' (0 elements)")
+        return []
+
+    dates_found = []
+    for i in range(count):
+        try:
+            text = headers.nth(i).text_content().strip()
+            dates_found.append(text)
+        except Exception:
+            pass
+    log(f"  Visible date sections on page ({len(dates_found)}):")
+    for d in dates_found:
+        log(f"    - {d}")
+    return dates_found
+
+
 def scroll_to_date_section(page, target_date):
     """Scroll incrementally to the target date section to trigger lazy loading."""
     date_str = format_date_header(target_date)
     log(f"Step 3: Scrolling to {date_str}...")
 
     # Scroll down incrementally to trigger lazy-loaded class cards
-    for _ in range(30):
+    found = False
+    for i in range(50):
         page.mouse.wheel(0, 800)
         time.sleep(0.5)
         header = page.locator(f"p.schedule-list__date:has-text('{date_str}')")
         if header.count() > 0 and header.is_visible():
+            found = True
             break
+
+    if not found:
+        log(f"  Target date '{date_str}' not found after scrolling — diagnosing...")
+        discover_visible_dates(page)
+        page.screenshot(path="screenshots/03_date_not_found.png")
+        dump_page_html(page)
 
     # Now scroll the header into view precisely
     date_header = page.locator(f"p.schedule-list__date:has-text('{date_str}')")
@@ -235,7 +283,20 @@ def find_and_book_class(page, class_name, class_time, target_date):
     log(f"  Found {count} '{class_name}' row(s) on {date_str}")
 
     if count == 0:
-        log(f"  No rows matched — dumping HTML for debugging")
+        log(f"  No rows matched — checking what's on the page...")
+        all_rows = page.locator(".session-row-view")
+        log(f"  Total session rows on page: {all_rows.count()}")
+        date_scope_el = page.locator(f".schedule-list:has(.schedule-list__date:has-text('{date_str}'))")
+        log(f"  Date-scoped schedule-list elements: {date_scope_el.count()}")
+        if date_scope_el.count() > 0:
+            scoped_rows = date_scope_el.locator(".session-row-view")
+            log(f"  Rows in date scope (any class): {scoped_rows.count()}")
+            for j in range(min(scoped_rows.count(), 5)):
+                try:
+                    txt = scoped_rows.nth(j).text_content().strip()[:120]
+                    log(f"    [{j}] {txt}")
+                except Exception:
+                    pass
         dump_page_html(page)
         page.screenshot(path="screenshots/04_no_book_found.png")
         return False
@@ -549,11 +610,11 @@ def run(bookings):
         log("  COREPOWER_EMAIL=your_email@example.com")
         log("  COREPOWER_PASSWORD=your_password")
         log("See .env.example for reference.")
-        return
+        return False
 
     if not bookings:
         log("No classes to book with the given filters.")
-        return
+        return False
 
     log("Classes to book:")
     for class_info, target_date in bookings:
@@ -608,10 +669,13 @@ def run(bookings):
         }
         log(f"\n{'='*60}")
         log("RESULTS:")
+        any_success = False
         for class_info, target_date, result in results:
             label = status_labels.get(result, result)
             date_str = target_date.strftime("%a %b %d")
             log(f"  {date_str} {class_info['time']} {class_info['class_name']}: {label}")
+            if result in ("booked", "already_booked", "already_waitlisted", "waitlist_joined"):
+                any_success = True
         log(f"{'='*60}")
 
         page.screenshot(path="screenshots/06_final.png")
@@ -619,6 +683,7 @@ def run(bookings):
         time.sleep(10)
         browser.close()
         log("Done!")
+        return any_success
 
 
 FILLER_WORDS = {"book", "classes", "class", "and", "for", "the", "my", "all", "week", "weeks"}
@@ -663,11 +728,30 @@ def main():
         "words", nargs="*",
         help="Just type naturally: 'next friday', 'this tue and wed', 'book next week', etc.",
     )
+    parser.add_argument(
+        "--fallback", action="store_true",
+        help="If 'next' week fails, automatically retry with 'this' week",
+    )
+    parser.add_argument(
+        "--strict", action="store_true",
+        help="Exit non-zero if no classes were booked (for CI)",
+    )
     parsed = parser.parse_args()
 
     week, day_filter = parse_natural_args(parsed.words or [])
     bookings = build_bookings(day_filter=day_filter, week=week)
-    run(bookings)
+    success = run(bookings)
+
+    if not success and parsed.fallback and week == "next":
+        log("\n" + "=" * 60)
+        log("FALLBACK: 'next' week booking failed — retrying with 'this' week...")
+        log("=" * 60 + "\n")
+        bookings = build_bookings(day_filter=day_filter, week="this")
+        success = run(bookings)
+
+    if parsed.strict and not success:
+        log("\nNo classes were booked — exiting with error (--strict mode)")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

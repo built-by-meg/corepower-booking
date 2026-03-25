@@ -21,10 +21,17 @@ jobs:
 
       - run: cp config.example.py config.py
 
-      - run: python book_classes.py next friday
+      - run: python book_classes.py next friday --fallback --strict
         env:
           COREPOWER_EMAIL: ${{ secrets.COREPOWER_EMAIL }}
           COREPOWER_PASSWORD: ${{ secrets.COREPOWER_PASSWORD }}
           STUDIO_LOCATION: ${{ secrets.STUDIO_LOCATION }}
           CLASSES_TO_BOOK: ${{ secrets.CLASSES_TO_BOOK }}
           TZ: America/New_York
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: screenshots-friday
+          path: screenshots/
+          retention-days: 7
