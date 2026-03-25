@@ -63,7 +63,7 @@ def get_upcoming_dates_for_day(day_name, weeks=2):
 
 def format_date_header(dt):
     """Format a date to match CorePower's section headers, e.g. 'Tue, Mar 10'."""
-    return dt.strftime("%a, %b %d").replace(" 0", " ")
+    return dt.strftime("%a, %b %d")
 
 
 def navigate_to_schedule(page):
