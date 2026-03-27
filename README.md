@@ -84,7 +84,3 @@ Edit your local `config.py` (copied from `config.example.py`) to change:
 - Studio filter chip: `.cpy-chip-container`, close button: `img[alt='Close icon']`
 - Login modal: `.cpy-modal.show` (not `[role='dialog']`)
 - Classes lazy-load on scroll
-
-## TODO
-
-- Add notifications (email/text) if booking fails
