@@ -44,6 +44,8 @@ Four GitHub Actions workflows run on a weekly schedule to book each class as soo
 
 All workflows use `--fallback --strict` and upload debug screenshots as artifacts on every run.
 
+A `keepalive.yml` workflow runs monthly to prevent GitHub from disabling the scheduled workflows due to repo inactivity (GitHub auto-disables schedules after 60 days with no commits).
+
 Secrets required in the repo: `COREPOWER_EMAIL`, `COREPOWER_PASSWORD`, `STUDIO_LOCATION`, `CLASSES_TO_BOOK`.
 
 ## Configuration
