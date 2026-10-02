@@ -1,15 +1,29 @@
 name: "Keepalive"
 
+# GitHub disables scheduled workflows on public repos after 60 days with no
+# commits. Dummy-commit keepalives are a TOS violation (GitHub disabled
+# gautamkrishnar/keepalive-workflow for that). Re-enable via the Actions API
+# instead: no extra commits, no third-party action to download.
 on:
   schedule:
-    - cron: "0 0 1 * *"
+    - cron: "0 12 * * 0"  # Sunday 12:00 UTC; weekly so one miss is not fatal
   workflow_dispatch: {}
 
 jobs:
   keepalive:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      actions: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: gautamkrishnar/keepalive-workflow@v2
+      - name: Re-enable scheduled workflows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/workflows" --paginate \
+            --jq '.workflows[] | select(.path | startswith(".github/workflows/")) | .path' \
+          | while IFS= read -r path; do
+              file="${path##*/}"
+              echo "Enabling ${file}"
+              gh api -X PUT "repos/${GITHUB_REPOSITORY}/actions/workflows/${file}/enable"
+            done
